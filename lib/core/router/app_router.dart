@@ -5,6 +5,13 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/home/presentation/pages/splash_page.dart';
+import '../../features/home/presentation/pages/profile_page.dart';
+import '../../features/home/presentation/widgets/main_shell.dart';
+import '../../features/resources/presentation/pages/resources_list_page.dart';
+import '../../features/resources/presentation/pages/resource_detail_page.dart';
+import '../../features/resources/presentation/pages/create_resource_page.dart';
+import '../../features/progression/presentation/pages/progression_page.dart';
+import '../../features/statistics/presentation/pages/statistics_page.dart';
 
 GoRouter createRouter(AuthProvider authProvider) {
   return GoRouter(
@@ -18,7 +25,7 @@ GoRouter createRouter(AuthProvider authProvider) {
 
       final isPublic = loc == '/login' || loc == '/register';
       if (!isLoggedIn && !isPublic) return '/login';
-      if (isLoggedIn && isPublic) return '/home';
+      if (isLoggedIn && isPublic) return '/resources';
 
       return null;
     },
@@ -35,9 +42,52 @@ GoRouter createRouter(AuthProvider authProvider) {
         path: '/register',
         builder: (context, state) => const RegisterPage(),
       ),
-      GoRoute(
-        path: '/home',
-        builder: (context, state) => const _HomePage(),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) => MainShell(shell: shell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/resources',
+                builder: (context, state) => const ResourcesListPage(),
+                routes: [
+                  GoRoute(
+                    path: 'new',
+                    builder: (context, state) => const CreateResourcePage(),
+                  ),
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => ResourceDetailPage(
+                      resourceId: state.pathParameters['id']!,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/progression',
+                builder: (context, state) => const ProgressionPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profile',
+                builder: (context, state) => const ProfilePage(),
+                routes: [
+                  GoRoute(
+                    path: 'statistics',
+                    builder: (context, state) => const StatisticsPage(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
@@ -46,22 +96,4 @@ GoRouter createRouter(AuthProvider authProvider) {
       ),
     ),
   );
-}
-
-/// Page d'accueil minimale après connexion
-class _HomePage extends StatelessWidget {
-  const _HomePage();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Accueil')),
-      body: const Center(
-        child: Text(
-          'Connexion réussie !',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
 }
