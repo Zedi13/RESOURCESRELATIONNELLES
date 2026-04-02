@@ -37,7 +37,7 @@ class _SplashPageState extends State<SplashPage>
       if (mounted) {
         final auth = context.read<AuthProvider>();
         if (auth.isLoggedIn) {
-          context.go('/home');
+          context.go('/resources');
         } else {
           context.go('/login');
         }

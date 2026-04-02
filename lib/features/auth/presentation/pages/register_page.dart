@@ -48,7 +48,7 @@ class _RegisterPageState extends State<RegisterPage> {
       _passwordCtrl.text,
     );
     if (success && mounted) {
-      context.go('/home');
+      context.go('/resources');
     }
   }
 
