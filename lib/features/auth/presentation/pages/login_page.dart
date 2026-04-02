@@ -30,7 +30,7 @@ class _LoginPageState extends State<LoginPage> {
     final auth = context.read<AuthProvider>();
     final success = await auth.login(_emailCtrl.text, _passwordCtrl.text);
     if (success && mounted) {
-      context.go('/home');
+      context.go('/resources');
     }
   }
 
