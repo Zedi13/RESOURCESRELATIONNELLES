@@ -31,9 +31,9 @@ class AuthLocalDatasource {
     ),
     User(
       id: '4',
-      name: 'Jean Petit',
-      email: 'admin@example.com',
-      password: 'admin123',
+      name: 'lenny',
+      email: 'lenny@gmail.com',
+      password: 'lenny123',
       role: UserRole.admin,
       isVerified: true,
       createdAt: DateTime(2023, 6, 1),
