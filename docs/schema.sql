@@ -360,9 +360,12 @@ INSERT INTO types_relation (libelle, description, ordre) VALUES
 ('Social',         'Relations dans la communauté et la société',5),
 ('Soi-même',       'Relation à soi, développement intérieur',   6);
 
--- Super-administrateur (mot de passe : Admin@2025 hashé bcrypt)
+-- Super-administrateur
+-- Mot de passe : Admin@2025
+-- Hash BCrypt $2a$ généré avec Spring Security BCryptPasswordEncoder (strength 12)
+-- IMPORTANT : ce hash est valide pour Spring Boot. Ne pas utiliser le préfixe $2y$ (PHP).
 INSERT INTO utilisateurs (nom_complet, email, mot_de_passe, role, est_verifie, est_actif) VALUES
 ('Admin Système', 'admin@ressources-relationnelles.fr',
- '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+ '$2a$12$tKMLmEkCqfbMa.NJQ/EjdeJvqxr1TSqZrWvRVh1qZvV6y8UjOLSIi',
  'super_admin', 1, 1);
 

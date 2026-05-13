@@ -4,7 +4,8 @@
       "Bash(grep -E \"\\\\.\\(yaml|yml|lock|json|md\\)$\")",
       "Bash(flutter create:*)",
       "Bash(flutter analyze:*)",
-      "Bash(flutter pub:*)"
+      "Bash(flutter pub:*)",
+      "Bash(mvn compile *)"
     ]
   }
 }
