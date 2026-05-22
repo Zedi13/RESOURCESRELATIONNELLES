@@ -1,0 +1,154 @@
+.help-page {
+  padding-block: 2.5rem;
+  max-width: 860px;
+}
+
+.help-page > h1 {
+  font-size: var(--text-3xl);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.5rem;
+}
+
+.help-page > .help-intro {
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  margin-bottom: 2rem;
+}
+
+/* ── Table of contents ── */
+.help-toc {
+  background: var(--primary-50);
+  border: 1px solid var(--primary-200);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.help-toc strong {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.help-toc ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 0.5rem 1.5rem;
+  flex-wrap: wrap;
+}
+
+.help-toc a {
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+.help-toc a:hover {
+  color: var(--primary-700);
+  text-decoration: underline;
+}
+
+/* ── Help sections ── */
+.help-section {
+  margin-bottom: 3.5rem;
+  scroll-margin-top: 90px;
+}
+
+.help-section h2 {
+  font-size: var(--text-xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--color-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.help-section h3 {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 1.75rem 0 0.6rem;
+}
+
+.help-section p, .help-section li {
+  font-size: var(--text-sm);
+  line-height: 1.75;
+  color: var(--color-text);
+}
+
+.help-section ul, .help-section ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.help-section li { margin-bottom: 0.4rem; }
+
+.help-section a {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.help-section a:hover { text-decoration: underline; }
+
+/* ── Info grid (RGPD rights cards) ── */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.info-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  transition: box-shadow var(--transition-md), transform var(--transition-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.info-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary-600), var(--primary-400));
+  opacity: 0;
+  transition: opacity var(--transition-md);
+}
+
+.info-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.info-card:hover::before { opacity: 1; }
+
+.info-card strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.info-card p {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin: 0;
+  line-height: 1.6;
+}
