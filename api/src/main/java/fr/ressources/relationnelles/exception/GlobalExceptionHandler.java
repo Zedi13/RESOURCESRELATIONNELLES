@@ -3,6 +3,7 @@ package fr.ressources.relationnelles.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -72,6 +73,11 @@ public class GlobalExceptionHandler {
             .build();
 
         return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "Corps de requête invalide", "Le JSON envoyé est mal formé ou contient des valeurs invalides.", req);
     }
 
     @ExceptionHandler(Exception.class)

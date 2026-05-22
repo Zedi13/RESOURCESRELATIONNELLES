@@ -20,7 +20,7 @@ export default function MyRessourcesPage() {
 
   const fetch = useCallback(() => {
     setLoading(true);
-    ressourcesApi.listerAccessibles({ page, size: 15 })
+    ressourcesApi.listerMesCreations({ page, size: 15 })
       .then((r) => { setRessources(r.content); setTotalPages(r.totalPages); })
       .finally(() => setLoading(false));
   }, [page]);

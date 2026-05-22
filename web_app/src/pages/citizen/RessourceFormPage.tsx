@@ -8,10 +8,10 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
 import './RessourceFormPage.css';
 
-const TYPES: TypeRessource[] = ['ARTICLE', 'GUIDE', 'VIDEO', 'PODCAST', 'ACTIVITE', 'JEU', 'ATELIER', 'AUTRE'];
+const TYPES: TypeRessource[] = ['ARTICLE', 'VIDEO', 'AUDIO', 'ACTIVITE', 'JEU', 'PODCAST', 'DOCUMENT', 'LIEN'];
 const TYPE_LABELS: Record<TypeRessource, string> = {
-  ARTICLE: 'Article', GUIDE: 'Guide', VIDEO: 'Vidéo', PODCAST: 'Podcast',
-  ACTIVITE: 'Activité', JEU: 'Jeu', ATELIER: 'Atelier', AUTRE: 'Autre',
+  ARTICLE: 'Article', VIDEO: 'Vidéo', AUDIO: 'Audio', ACTIVITE: 'Activité',
+  JEU: 'Jeu', PODCAST: 'Podcast', DOCUMENT: 'Document', LIEN: 'Lien',
 };
 const VISIBILITES: { value: Visibilite; label: string }[] = [
   { value: 'PUBLIQUE', label: 'Publique — visible de tous' },
@@ -28,7 +28,7 @@ export default function RessourceFormPage() {
   const [form, setForm] = useState<RessourceRequest>({
     titre: '', description: '', contenu: '',
     type: 'ARTICLE', visibilite: 'PUBLIQUE',
-    categorieId: undefined, typesRelationsIds: [],
+    categorieId: undefined, typesRelationIds: [],
     urlExterne: '', dureeEstimeeMin: undefined,
   });
   const [categories, setCategories] = useState<Categorie[]>([]);
@@ -36,6 +36,7 @@ export default function RessourceFormPage() {
   const [loading, setLoading] = useState(false);
   const [initLoading, setInitLoading] = useState(isEdit);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   if (!authLoading && !user) return <Navigate to="/connexion" replace />;
 
@@ -49,7 +50,7 @@ export default function RessourceFormPage() {
             titre: r.titre, description: r.description, contenu: r.contenu,
             type: r.type, visibilite: r.visibilite,
             categorieId: r.categorie?.id,
-            typesRelationsIds: r.typesRelation.map(t => t.id),
+            typesRelationIds: r.typesRelation.map(t => t.id),
             urlExterne: r.urlExterne ?? '',
             dureeEstimeeMin: r.dureeEstimeeMin,
           });
@@ -62,13 +63,24 @@ export default function RessourceFormPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const toggleRelation = (id: number) => {
-    const ids = form.typesRelationsIds ?? [];
-    setField('typesRelationsIds', ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id]);
+    const ids = form.typesRelationIds ?? [];
+    setField('typesRelationIds', ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
+
+    const validationErrors: Record<string, string> = {};
+    if (!form.categorieId) validationErrors.categorieId = 'Veuillez sélectionner une catégorie.';
+    if (!form.typesRelationIds || form.typesRelationIds.length === 0)
+      validationErrors.typesRelationIds = 'Veuillez sélectionner au moins un type de relation.';
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors);
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = { ...form, urlExterne: form.urlExterne || undefined };
@@ -76,7 +88,9 @@ export default function RessourceFormPage() {
       else await ressourcesApi.creer(payload);
       navigate('/mon-espace/mes-ressources');
     } catch (err: any) {
-      setError(err.response?.data?.message ?? 'Erreur lors de la sauvegarde.');
+      const data = err.response?.data;
+      if (data?.erreurs) setFieldErrors(data.erreurs);
+      setError(data?.message ?? 'Erreur lors de la sauvegarde.');
     } finally {
       setLoading(false);
     }
@@ -149,13 +163,14 @@ export default function RessourceFormPage() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="categorie">Catégorie</label>
+                <label htmlFor="categorie">Catégorie <span className="required">*</span></label>
                 <select id="categorie" className="form-select"
                   value={form.categorieId ?? ''}
                   onChange={(e) => setField('categorieId', e.target.value ? parseInt(e.target.value) : undefined)}>
-                  <option value="">Sans catégorie</option>
+                  <option value="">— Sélectionner une catégorie —</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
                 </select>
+                {fieldErrors.categorieId && <p className="field-error">{fieldErrors.categorieId}</p>}
               </div>
 
               <div className="form-group">
@@ -169,19 +184,20 @@ export default function RessourceFormPage() {
             </div>
 
             <div className="form-card">
-              <h3>Types de relations</h3>
+              <h3>Types de relations <span className="required">*</span></h3>
               <div className="relations-check">
                 {typeRelations.map(t => (
                   <label key={t.id} className="check-option">
                     <input
                       type="checkbox"
-                      checked={(form.typesRelationsIds ?? []).includes(t.id)}
+                      checked={(form.typesRelationIds ?? []).includes(t.id)}
                       onChange={() => toggleRelation(t.id)}
                     />
                     {t.libelle}
                   </label>
                 ))}
               </div>
+              {fieldErrors.typesRelationIds && <p className="field-error">{fieldErrors.typesRelationIds}</p>}
             </div>
           </aside>
         </div>

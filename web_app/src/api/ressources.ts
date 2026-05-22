@@ -47,6 +47,11 @@ export const supprimer = (id: number) =>
 export const partager = (id: number) =>
   client.post(`/api/ressources/${id}/partager`);
 
+export const listerMesCreations = (params: { page?: number; size?: number } = {}) =>
+  client.get<PageResponse<RessourceSummary>>('/api/ressources/mes-creations', {
+    params: toParams({ ...params }),
+  }).then((r) => r.data);
+
 export const listerAdmin = (filters: AdminRessourceFilters = {}) =>
   client.get<PageResponse<RessourceSummary>>('/api/ressources/admin', {
     params: toParams({ ...filters }),

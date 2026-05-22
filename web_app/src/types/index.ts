@@ -1,5 +1,5 @@
 export type Role = 'CITOYEN' | 'MODERATEUR' | 'ADMIN' | 'SUPER_ADMIN';
-export type TypeRessource = 'ARTICLE' | 'GUIDE' | 'VIDEO' | 'PODCAST' | 'ACTIVITE' | 'JEU' | 'ATELIER' | 'AUTRE';
+export type TypeRessource = 'ARTICLE' | 'VIDEO' | 'AUDIO' | 'ACTIVITE' | 'JEU' | 'PODCAST' | 'DOCUMENT' | 'LIEN';
 export type Visibilite = 'PUBLIQUE' | 'PRIVEE' | 'PARTAGEE';
 export type StatutRessource = 'BROUILLON' | 'EN_ATTENTE' | 'PUBLIE' | 'SUSPENDU' | 'ARCHIVE';
 export type StatutCommentaire = 'EN_ATTENTE' | 'APPROUVE' | 'REJETE';
@@ -147,7 +147,7 @@ export interface RessourceRequest {
   type: TypeRessource;
   visibilite: Visibilite;
   categorieId?: number;
-  typesRelationsIds?: number[];
+  typesRelationIds?: number[];
   urlExterne?: string;
   dureeEstimeeMin?: number;
 }

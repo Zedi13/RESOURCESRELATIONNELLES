@@ -101,6 +101,14 @@
   flex-wrap: wrap;
 }
 
+/* ── Field-level error ── */
+.field-error {
+  color: #dc2626;
+  font-size: var(--text-xs, 0.75rem);
+  margin-top: 0.25rem;
+  font-weight: 500;
+}
+
 /* ── Error box ── */
 .form-error-box {
   background: #fee2e2;

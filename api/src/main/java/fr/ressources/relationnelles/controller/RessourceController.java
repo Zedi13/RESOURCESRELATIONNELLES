@@ -57,6 +57,16 @@ public class RessourceController {
         return ResponseEntity.ok(ressourceService.listerAccessibles(utilisateur, categorieId, type, search, pageable));
     }
 
+    @GetMapping("/mes-creations")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Lister uniquement les ressources créées par l'utilisateur connecté")
+    public ResponseEntity<PageResponse<RessourceSummaryResponse>> listerMesCreations(
+        @PageableDefault(size = 15) Pageable pageable
+    ) {
+        Utilisateur auteur = securityUtils.getUtilisateurConnecte();
+        return ResponseEntity.ok(ressourceService.listerMesCreations(auteur, pageable));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Récupérer le détail d'une ressource")
     public ResponseEntity<RessourceResponse> getById(@PathVariable Integer id) {

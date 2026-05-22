@@ -64,6 +64,9 @@ public interface RessourceRepository extends JpaRepository<Ressource, Integer> {
     @Query("UPDATE Ressource r SET r.partages = r.partages + 1 WHERE r.id = :id")
     void incrementerPartages(@Param("id") Integer id);
 
+    // Mes créations : toutes les ressources dont l'auteur est l'utilisateur connecté
+    Page<Ressource> findByAuteurIdOrderByDateCreationDesc(Integer auteurId, Pageable pageable);
+
     // Statistiques
     long countByStatut(StatutRessource statut);
 

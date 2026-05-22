@@ -66,6 +66,13 @@ public class RessourceService {
         );
     }
 
+    public PageResponse<RessourceSummaryResponse> listerMesCreations(Utilisateur auteur, Pageable pageable) {
+        return PageResponse.from(
+            ressourceRepository.findByAuteurIdOrderByDateCreationDesc(auteur.getId(), pageable),
+            ressourceMapper::toSummary
+        );
+    }
+
     @Transactional
     public RessourceResponse getById(Integer id, Utilisateur utilisateur) {
         Ressource ressource = trouverOuEchouer(id);
