@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-05-22T09:53:52+0200",
-    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.2 (Oracle Corporation)"
+    date = "2026-05-23T16:29:59+0200",
+    comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.46.0.v20260407-0427, environment: Java 21.0.10 (Eclipse Adoptium)"
 )
 @Component
 public class RessourceMapperImpl implements RessourceMapper {
@@ -32,20 +32,20 @@ public class RessourceMapperImpl implements RessourceMapper {
         ressourceResponse.auteurNom( ressourceAuteurNomComplet( ressource ) );
         ressourceResponse.categorie( categorieMapper.toResponse( ressource.getCategorie() ) );
         ressourceResponse.typesRelation( mapTypesRelation( ressource.getTypesRelation() ) );
-        ressourceResponse.id( ressource.getId() );
-        ressourceResponse.titre( ressource.getTitre() );
-        ressourceResponse.description( ressource.getDescription() );
         ressourceResponse.contenu( ressource.getContenu() );
-        ressourceResponse.type( ressource.getType() );
-        ressourceResponse.visibilite( ressource.getVisibilite() );
-        ressourceResponse.statut( ressource.getStatut() );
-        ressourceResponse.urlExterne( ressource.getUrlExterne() );
-        ressourceResponse.dureeEstimeeMin( ressource.getDureeEstimeeMin() );
-        ressourceResponse.vues( ressource.getVues() );
-        ressourceResponse.partages( ressource.getPartages() );
         ressourceResponse.dateCreation( ressource.getDateCreation() );
         ressourceResponse.dateModification( ressource.getDateModification() );
         ressourceResponse.datePublication( ressource.getDatePublication() );
+        ressourceResponse.description( ressource.getDescription() );
+        ressourceResponse.dureeEstimeeMin( ressource.getDureeEstimeeMin() );
+        ressourceResponse.id( ressource.getId() );
+        ressourceResponse.partages( ressource.getPartages() );
+        ressourceResponse.statut( ressource.getStatut() );
+        ressourceResponse.titre( ressource.getTitre() );
+        ressourceResponse.type( ressource.getType() );
+        ressourceResponse.urlExterne( ressource.getUrlExterne() );
+        ressourceResponse.visibilite( ressource.getVisibilite() );
+        ressourceResponse.vues( ressource.getVues() );
 
         return ressourceResponse.build();
     }
@@ -64,17 +64,17 @@ public class RessourceMapperImpl implements RessourceMapper {
         ressourceSummaryResponse.categorieNom( ressourceCategorieNom( ressource ) );
         ressourceSummaryResponse.couleurCategorie( ressourceCategorieCouleur( ressource ) );
         ressourceSummaryResponse.typesRelation( mapTypesRelation( ressource.getTypesRelation() ) );
-        ressourceSummaryResponse.id( ressource.getId() );
-        ressourceSummaryResponse.titre( ressource.getTitre() );
-        ressourceSummaryResponse.description( ressource.getDescription() );
-        ressourceSummaryResponse.type( ressource.getType() );
-        ressourceSummaryResponse.visibilite( ressource.getVisibilite() );
-        ressourceSummaryResponse.statut( ressource.getStatut() );
-        ressourceSummaryResponse.dureeEstimeeMin( ressource.getDureeEstimeeMin() );
-        ressourceSummaryResponse.vues( ressource.getVues() );
-        ressourceSummaryResponse.partages( ressource.getPartages() );
         ressourceSummaryResponse.dateCreation( ressource.getDateCreation() );
         ressourceSummaryResponse.datePublication( ressource.getDatePublication() );
+        ressourceSummaryResponse.description( ressource.getDescription() );
+        ressourceSummaryResponse.dureeEstimeeMin( ressource.getDureeEstimeeMin() );
+        ressourceSummaryResponse.id( ressource.getId() );
+        ressourceSummaryResponse.partages( ressource.getPartages() );
+        ressourceSummaryResponse.statut( ressource.getStatut() );
+        ressourceSummaryResponse.titre( ressource.getTitre() );
+        ressourceSummaryResponse.type( ressource.getType() );
+        ressourceSummaryResponse.visibilite( ressource.getVisibilite() );
+        ressourceSummaryResponse.vues( ressource.getVues() );
 
         return ressourceSummaryResponse.build();
     }

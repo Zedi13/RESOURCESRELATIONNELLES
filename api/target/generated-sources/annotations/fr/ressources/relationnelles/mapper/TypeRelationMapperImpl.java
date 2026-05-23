@@ -7,8 +7,8 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-05-22T09:53:52+0200",
-    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.2 (Oracle Corporation)"
+    date = "2026-05-23T16:29:59+0200",
+    comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.46.0.v20260407-0427, environment: Java 21.0.10 (Eclipse Adoptium)"
 )
 @Component
 public class TypeRelationMapperImpl implements TypeRelationMapper {
@@ -21,9 +21,9 @@ public class TypeRelationMapperImpl implements TypeRelationMapper {
 
         TypeRelationResponse.TypeRelationResponseBuilder typeRelationResponse = TypeRelationResponse.builder();
 
+        typeRelationResponse.description( typeRelation.getDescription() );
         typeRelationResponse.id( typeRelation.getId() );
         typeRelationResponse.libelle( typeRelation.getLibelle() );
-        typeRelationResponse.description( typeRelation.getDescription() );
         typeRelationResponse.ordre( typeRelation.getOrdre() );
 
         return typeRelationResponse.build();
