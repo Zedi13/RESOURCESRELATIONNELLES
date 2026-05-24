@@ -1,5 +1,6 @@
 import '../entities/statistics.dart';
 
 abstract class StatisticsRepository {
-  AppStatistics getStatistics();
+  Future<AppStatistics> getStatistics();
+  Future<String> exportCsv();
 }

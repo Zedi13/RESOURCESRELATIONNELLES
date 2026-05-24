@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
@@ -6,11 +7,27 @@ import '../../../../features/comments/presentation/widgets/comments_section.dart
 import '../../../../features/progression/presentation/providers/progression_provider.dart';
 import '../providers/resources_provider.dart';
 import '../../domain/entities/resource.dart';
+import '../../domain/entities/type_relation_entity.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../sessions/data/datasources/sessions_remote_datasource.dart';
 
-class ResourceDetailPage extends StatelessWidget {
+class ResourceDetailPage extends StatefulWidget {
   final String resourceId;
 
   const ResourceDetailPage({super.key, required this.resourceId});
+
+  @override
+  State<ResourceDetailPage> createState() => _ResourceDetailPageState();
+}
+
+class _ResourceDetailPageState extends State<ResourceDetailPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ResourcesProvider>().loadResourceById(widget.resourceId);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +36,15 @@ class ResourceDetailPage extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final user = auth.currentUser;
 
-    final resource = resourcesProvider.getResourceById(resourceId);
+    if (resourcesProvider.isLoadingDetail) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final resource = resourcesProvider.detailResource ??
+        resourcesProvider.getResourceById(widget.resourceId);
 
     if (resource == null) {
       return Scaffold(
@@ -31,12 +56,15 @@ class ResourceDetailPage extends StatelessWidget {
     final category = resourcesProvider.getCategoryById(resource.categoryId);
     final catColor = category?.color ?? AppTheme.tertiary;
 
-    final isFav = user != null &&
-        progressionProvider.isFavorite(user.id, resource.id);
-    final isExploited = user != null &&
-        progressionProvider.isExploited(user.id, resource.id);
-    final isSaved = user != null &&
-        progressionProvider.isSaved(user.id, resource.id);
+    final isFav =
+        user != null && progressionProvider.isFavorite(user.id, resource.id);
+    final isExploited =
+        user != null && progressionProvider.isExploited(user.id, resource.id);
+    final isSaved =
+        user != null && progressionProvider.isSaved(user.id, resource.id);
+
+    final canEdit = user != null &&
+        (user.id == resource.authorId || user.isModerator);
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -48,6 +76,15 @@ class ResourceDetailPage extends StatelessWidget {
             pinned: true,
             backgroundColor: AppTheme.primary,
             actions: [
+              if (canEdit)
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  tooltip: 'Modifier',
+                  onPressed: () => context.push(
+                    '/resources/${resource.id}/edit',
+                    extra: resource,
+                  ),
+                ),
               if (user != null)
                 IconButton(
                   icon: Icon(
@@ -221,31 +258,36 @@ class ResourceDetailPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  // Relation types
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: resource.relationTypes.map((rt) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: catColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: catColor.withOpacity(0.2)),
-                        ),
-                        child: Text(
-                          rt.label,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: catColor,
-                            fontWeight: FontWeight.w500,
+                  // Relation types (résolus dynamiquement depuis l'API)
+                  Builder(builder: (_) {
+                    final labels = _resolveRelationLabels(
+                        resource, resourcesProvider.typeRelations);
+                    if (labels.isEmpty) return const SizedBox.shrink();
+                    return Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: labels.map((label) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: catColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: catColor.withOpacity(0.2)),
                           ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: catColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  }),
                   // Description
                   const SizedBox(height: 16),
                   Container(
@@ -297,6 +339,13 @@ class ResourceDetailPage extends StatelessWidget {
                       ],
                     ),
                   ],
+                  // Section session pour Activité / Jeu
+                  if (user != null &&
+                      (resource.type == ResourceType.activite ||
+                          resource.type == ResourceType.jeu)) ...[
+                    const SizedBox(height: 20),
+                    _SessionSection(resource: resource),
+                  ],
                   // Main content
                   const SizedBox(height: 24),
                   const Divider(),
@@ -316,6 +365,204 @@ class ResourceDetailPage extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Section Session Activité/Jeu ──────────────────────────────────────────────
+
+class _SessionSection extends StatefulWidget {
+  final Resource resource;
+  const _SessionSection({required this.resource});
+
+  @override
+  State<_SessionSection> createState() => _SessionSectionState();
+}
+
+class _SessionSectionState extends State<_SessionSection> {
+  bool _starting = false;
+  bool _joining = false;
+  final _codeCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _codeCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _start() async {
+    setState(() => _starting = true);
+    try {
+      final ds = SessionsRemoteDatasource(context.read<ApiClient>());
+      final session = await ds.createSession(widget.resource.id);
+      if (mounted) {
+        context.push('/sessions/${session.code}');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Erreur : $e'),
+              backgroundColor: AppTheme.error),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _starting = false);
+    }
+  }
+
+  Future<void> _join() async {
+    final code = _codeCtrl.text.trim().toUpperCase();
+    if (code.isEmpty) return;
+    setState(() => _joining = true);
+    try {
+      final ds = SessionsRemoteDatasource(context.read<ApiClient>());
+      final session = await ds.joinSession(code);
+      if (mounted) {
+        Navigator.of(context).pop(); // ferme le dialog
+        context.push('/sessions/${session.code}');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Session introuvable ou erreur : $e'),
+              backgroundColor: AppTheme.error),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _joining = false);
+    }
+  }
+
+  void _showJoinDialog() {
+    _codeCtrl.clear();
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Rejoindre une session'),
+        content: TextField(
+          controller: _codeCtrl,
+          autofocus: true,
+          textCapitalization: TextCapitalization.characters,
+          maxLength: 8,
+          decoration: const InputDecoration(
+            labelText: 'Code de la session',
+            hintText: 'ex : AB3C5D',
+            prefixIcon: Icon(Icons.tag),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: _joining ? null : _join,
+            child: _joining
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  )
+                : const Text('Rejoindre'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.secondary.withOpacity(0.08),
+            AppTheme.secondary.withOpacity(0.04),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.secondary.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.group_outlined,
+                  color: AppTheme.secondary, size: 18),
+              const SizedBox(width: 8),
+              const Text(
+                'Session collaborative',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.secondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Démarrez une session pour réaliser cette activité avec d\'autres participants.',
+            style: TextStyle(
+                fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _starting ? null : _start,
+                  icon: _starting
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.play_circle_outline, size: 16),
+                  label: const Text('Démarrer'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.secondary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _showJoinDialog,
+                  icon: const Icon(Icons.login, size: 16),
+                  label: const Text('Rejoindre'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.secondary,
+                    side: const BorderSide(color: AppTheme.secondary),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Résout les labels des types de relation depuis les IDs bruts de l'API.
+List<String> _resolveRelationLabels(
+    Resource resource, List<TypeRelationEntity> typeRelations) {
+  if (resource.allRelationTypeIds.isNotEmpty && typeRelations.isNotEmpty) {
+    final labels = typeRelations
+        .where((tr) => resource.allRelationTypeIds.contains(tr.id))
+        .map((tr) => tr.libelle)
+        .toList();
+    if (labels.isNotEmpty) return labels;
+  }
+  return resource.relationTypes.map((rt) => rt.label).toList();
 }
 
 class _ActionButton extends StatelessWidget {

@@ -60,22 +60,49 @@ public class StatistiquesService {
     public String exportCsv() {
         StatistiquesResponse stats = getDashboard();
         StringBuilder sb = new StringBuilder();
-        sb.append("Indicateur,Valeur\n");
-        sb.append("Total ressources,").append(stats.getTotalRessources()).append("\n");
-        sb.append("Ressources publiées,").append(stats.getRessourcesPubliees()).append("\n");
-        sb.append("Ressources en attente,").append(stats.getRessourcesEnAttente()).append("\n");
-        sb.append("Ressources suspendues,").append(stats.getRessourcesSuspendues()).append("\n");
-        sb.append("Total vues,").append(stats.getTotalVues()).append("\n");
-        sb.append("Total partages,").append(stats.getTotalPartages()).append("\n");
-        sb.append("Total utilisateurs,").append(stats.getTotalUtilisateurs()).append("\n");
-        sb.append("Citoyens actifs,").append(stats.getCitoyensActifs()).append("\n");
-        sb.append("Total commentaires,").append(stats.getTotalCommentaires()).append("\n");
-        sb.append("Commentaires en attente,").append(stats.getCommentairesEnAttente()).append("\n");
-        sb.append("\nType,Nombre ressources\n");
-        stats.getRessourcesParType().forEach((k, v) -> sb.append(k).append(",").append(v).append("\n"));
-        sb.append("\nCatégorie,Nombre ressources\n");
-        stats.getRessourcesParCategorie().forEach((k, v) -> sb.append(k).append(",").append(v).append("\n"));
+        sb.append("sep=;\n"); // force Excel à utiliser ; comme séparateur
+
+        // ── Indicateurs globaux ───────────────────────────────────────────────
+        sb.append("=== INDICATEURS GLOBAUX ===\n");
+        sb.append("Indicateur;Valeur\n");
+        row(sb, "Total ressources",           stats.getTotalRessources());
+        row(sb, "Ressources publiées",         stats.getRessourcesPubliees());
+        row(sb, "Ressources en attente",       stats.getRessourcesEnAttente());
+        row(sb, "Ressources suspendues",       stats.getRessourcesSuspendues());
+        row(sb, "Total vues",                  stats.getTotalVues());
+        row(sb, "Total partages",              stats.getTotalPartages());
+        row(sb, "Total utilisateurs",          stats.getTotalUtilisateurs());
+        row(sb, "Citoyens actifs",             stats.getCitoyensActifs());
+        row(sb, "Total commentaires",          stats.getTotalCommentaires());
+        row(sb, "Commentaires en attente",     stats.getCommentairesEnAttente());
+
+        // ── Statistiques mensuelles ───────────────────────────────────────────
+        sb.append("\n=== STATISTIQUES MENSUELLES ===\n");
+        sb.append("Année;Mois;Ressources créées;Vues\n");
+        if (stats.getStatsParMois() != null) {
+            stats.getStatsParMois().forEach(s ->
+                sb.append(s.getAnnee()).append(";")
+                  .append(String.format("%02d", s.getMois())).append(";")
+                  .append(s.getRessourcesCrees()).append(";")
+                  .append(s.getVues()).append("\n")
+            );
+        }
+
+        // ── Ressources par type ───────────────────────────────────────────────
+        sb.append("\n=== RESSOURCES PAR TYPE ===\n");
+        sb.append("Type;Nombre de ressources\n");
+        stats.getRessourcesParType().forEach((k, v) -> sb.append(k).append(";").append(v).append("\n"));
+
+        // ── Ressources par catégorie ──────────────────────────────────────────
+        sb.append("\n=== RESSOURCES PAR CATÉGORIE ===\n");
+        sb.append("Catégorie;Nombre de ressources\n");
+        stats.getRessourcesParCategorie().forEach((k, v) -> sb.append(k).append(";").append(v).append("\n"));
+
         return sb.toString();
+    }
+
+    private void row(StringBuilder sb, String label, Object value) {
+        sb.append(label).append(";").append(value).append("\n");
     }
 
     private Map<String, Long> toMap(List<Object[]> rows) {

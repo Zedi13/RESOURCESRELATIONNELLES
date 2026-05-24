@@ -7,7 +7,20 @@ import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../resources/presentation/providers/resources_provider.dart';
 import '../../../resources/presentation/widgets/resource_card.dart';
 import '../../../resources/domain/entities/resource.dart';
+import '../../../resources/domain/entities/type_relation_entity.dart';
 import '../providers/progression_provider.dart';
+
+List<String> _resolveRelationLabels(
+    Resource resource, List<TypeRelationEntity> typeRelations) {
+  if (resource.allRelationTypeIds.isNotEmpty && typeRelations.isNotEmpty) {
+    final labels = typeRelations
+        .where((tr) => resource.allRelationTypeIds.contains(tr.id))
+        .map((tr) => tr.libelle)
+        .toList();
+    if (labels.isNotEmpty) return labels;
+  }
+  return resource.relationTypes.map((rt) => rt.label).toList();
+}
 
 class ProgressionPage extends StatefulWidget {
   const ProgressionPage({super.key});
@@ -24,6 +37,12 @@ class _ProgressionPageState extends State<ProgressionPage>
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 3, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = context.read<AuthProvider>().currentUser;
+      if (user != null) {
+        context.read<ProgressionProvider>().loadProgression(user.id);
+      }
+    });
   }
 
   @override
@@ -266,6 +285,8 @@ class _ResourceList extends StatelessWidget {
           category: category,
           isFavorite: progressionProvider.isFavorite(userId, resource.id),
           isExploited: progressionProvider.isExploited(userId, resource.id),
+          relationTypeLabels: _resolveRelationLabels(
+              resource, resourcesProvider.typeRelations),
           onTap: () => context.push('/resources/${resource.id}'),
           onFavoriteToggle: () =>
               progressionProvider.toggleFavorite(userId, resource.id),

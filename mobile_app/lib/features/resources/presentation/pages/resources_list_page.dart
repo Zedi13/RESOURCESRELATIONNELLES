@@ -5,6 +5,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_widgets.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/resource.dart';
+import '../../domain/entities/type_relation_entity.dart';
 import '../providers/resources_provider.dart';
 import '../../../progression/presentation/providers/progression_provider.dart';
 import '../widgets/resource_card.dart';
@@ -18,6 +19,14 @@ class ResourcesListPage extends StatefulWidget {
 
 class _ResourcesListPageState extends State<ResourcesListPage> {
   bool _showFilters = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ResourcesProvider>().loadResources();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +43,11 @@ class _ResourcesListPageState extends State<ResourcesListPage> {
       appBar: AppBar(
         title: const AppLogoCompact(),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: () => context.read<ResourcesProvider>().loadResources(),
+            tooltip: 'Actualiser',
+          ),
           if (user != null)
             IconButton(
               icon: Icon(
@@ -153,7 +167,9 @@ class _ResourcesListPageState extends State<ResourcesListPage> {
           ),
           // Resources grid
           Expanded(
-            child: resources.isEmpty
+            child: resourcesProvider.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : resources.isEmpty
                 ? EmptyState(
                     icon: Icons.search_off,
                     title: 'Aucune ressource trouvée',
@@ -164,7 +180,10 @@ class _ResourcesListPageState extends State<ResourcesListPage> {
                       child: const Text('Réinitialiser les filtres'),
                     ),
                   )
-                : ListView.separated(
+                : RefreshIndicator(
+                    onRefresh: () => context.read<ResourcesProvider>().loadResources(),
+                    color: AppTheme.primary,
+                    child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                     itemCount: resources.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -184,6 +203,8 @@ class _ResourcesListPageState extends State<ResourcesListPage> {
                         category: category,
                         isFavorite: isFav,
                         isExploited: isExploited,
+                        relationTypeLabels: _resolveRelationLabels(
+                            resource, resourcesProvider.typeRelations),
                         onTap: () {
                           resourcesProvider.incrementViews(resource.id);
                           context.push('/resources/${resource.id}');
@@ -195,10 +216,25 @@ class _ResourcesListPageState extends State<ResourcesListPage> {
                       );
                     },
                   ),
+                ),
           ),
         ],
       ),
     );
+  }
+
+  /// Résout les labels des types de relation depuis les IDs bruts de l'API.
+  /// Fallback sur l'enum si allRelationTypeIds est vide ou types pas encore chargés.
+  List<String> _resolveRelationLabels(
+      Resource resource, List<TypeRelationEntity> typeRelations) {
+    if (resource.allRelationTypeIds.isNotEmpty && typeRelations.isNotEmpty) {
+      final labels = typeRelations
+          .where((tr) => resource.allRelationTypeIds.contains(tr.id))
+          .map((tr) => tr.libelle)
+          .toList();
+      if (labels.isNotEmpty) return labels;
+    }
+    return resource.relationTypes.map((rt) => rt.label).toList();
   }
 
   Widget _buildFilters(ResourcesProvider provider) {
@@ -239,17 +275,17 @@ class _ResourcesListPageState extends State<ResourcesListPage> {
             }).toList(),
           ),
           const Divider(height: 16),
-          // Relation type filter
+          // Relation type filter (dynamique depuis l'API)
           Wrap(
             spacing: 6,
             runSpacing: 6,
-            children: RelationType.values.map((rt) {
-              final selected = provider.selectedRelationType == rt;
+            children: provider.typeRelations.map((tr) {
+              final selected = provider.selectedRelationTypeEntity?.id == tr.id;
               return FilterChip(
-                label: Text(rt.label),
+                label: Text(tr.libelle),
                 selected: selected,
                 onSelected: (_) =>
-                    provider.setRelationTypeFilter(selected ? null : rt),
+                    provider.setRelationTypeFilter(selected ? null : tr),
                 selectedColor: AppTheme.secondary.withOpacity(0.15),
                 checkmarkColor: AppTheme.secondary,
                 labelStyle: const TextStyle(fontSize: 12),

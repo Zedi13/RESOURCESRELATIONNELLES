@@ -5,9 +5,23 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_widgets.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../features/auth/domain/entities/user.dart';
+import '../../../resources/domain/entities/resource.dart';
+import '../../../resources/domain/entities/type_relation_entity.dart';
 import '../../../resources/presentation/providers/resources_provider.dart';
 import '../../../resources/presentation/widgets/resource_card.dart';
 import '../../../progression/presentation/providers/progression_provider.dart';
+
+List<String> _resolveRelationLabels(
+    Resource resource, List<TypeRelationEntity> typeRelations) {
+  if (resource.allRelationTypeIds.isNotEmpty && typeRelations.isNotEmpty) {
+    final labels = typeRelations
+        .where((tr) => resource.allRelationTypeIds.contains(tr.id))
+        .map((tr) => tr.libelle)
+        .toList();
+    if (labels.isNotEmpty) return labels;
+  }
+  return resource.relationTypes.map((rt) => rt.label).toList();
+}
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -151,7 +165,7 @@ class ProfilePage extends StatelessWidget {
                       _SettingsTile(
                         icon: Icons.help_outline,
                         label: 'Aide & Support',
-                        onTap: () {},
+                        onTap: () => context.push('/profile/help'),
                       ),
                       const Divider(height: 1),
                       _SettingsTile(
@@ -160,7 +174,7 @@ class ProfilePage extends StatelessWidget {
                         trailing: const Text('v1.0.0',
                             style: TextStyle(
                                 color: AppTheme.textSecondary, fontSize: 12)),
-                        onTap: () {},
+                        onTap: () => context.push('/profile/about'),
                       ),
                     ],
                   ),
@@ -233,16 +247,29 @@ class ProfilePage extends StatelessWidget {
   }
 }
 
-class _MyResourcesSection extends StatelessWidget {
+class _MyResourcesSection extends StatefulWidget {
   final String userId;
 
   const _MyResourcesSection({required this.userId});
 
   @override
+  State<_MyResourcesSection> createState() => _MyResourcesSectionState();
+}
+
+class _MyResourcesSectionState extends State<_MyResourcesSection> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ResourcesProvider>().loadMyResources(widget.userId);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final resourcesProvider = context.watch<ResourcesProvider>();
     final progressionProvider = context.watch<ProgressionProvider>();
-    final myResources = resourcesProvider.getResourcesByAuthor(userId);
+    final myResources = resourcesProvider.myResources;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -256,7 +283,14 @@ class _MyResourcesSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        if (myResources.isEmpty)
+        if (resourcesProvider.isLoadingMyResources)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else if (myResources.isEmpty)
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -278,18 +312,73 @@ class _MyResourcesSection extends StatelessWidget {
             final cat = resourcesProvider.getCategoryById(r.categoryId);
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: ResourceCard(
-                resource: r,
-                category: cat,
-                isFavorite: progressionProvider.isFavorite(userId, r.id),
-                isExploited: progressionProvider.isExploited(userId, r.id),
-                onTap: () => context.push('/resources/${r.id}'),
-                onFavoriteToggle: () =>
-                    progressionProvider.toggleFavorite(userId, r.id),
+              child: Stack(
+                children: [
+                  ResourceCard(
+                    resource: r,
+                    category: cat,
+                    isFavorite: progressionProvider.isFavorite(widget.userId, r.id),
+                    isExploited: progressionProvider.isExploited(widget.userId, r.id),
+                    relationTypeLabels: _resolveRelationLabels(
+                        r, resourcesProvider.typeRelations),
+                    onTap: () => context.push('/resources/${r.id}'),
+                    onFavoriteToggle: () =>
+                        progressionProvider.toggleFavorite(widget.userId, r.id),
+                  ),
+                  // Badge de statut pour les ressources non publiées
+                  if (r.status != ResourceStatus.publie)
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: _StatusBadge(status: r.status),
+                    ),
+                ],
               ),
             );
           }),
       ],
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final ResourceStatus status;
+
+  const _StatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, color, icon) = switch (status) {
+      ResourceStatus.enAttente => ('En attente', AppTheme.warning, Icons.hourglass_top_outlined),
+      ResourceStatus.brouillon => ('Brouillon', AppTheme.textSecondary, Icons.edit_note_outlined),
+      ResourceStatus.suspendu  => ('Suspendu', AppTheme.error, Icons.block_outlined),
+      _                        => ('Publié', AppTheme.success, Icons.check_circle_outline),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: Colors.white),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -319,39 +408,38 @@ class _AdminSection extends StatelessWidget {
             ],
             _SettingsTile(
               icon: Icons.rate_review_outlined,
-              label: 'Modération des commentaires',
+              label: 'Modération',
               iconColor: AppTheme.warning,
-              trailing: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppTheme.warning.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Text(
-                  '1 en attente',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.warning,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              onTap: () {},
+              onTap: () => context.push('/profile/moderation'),
             ),
             if (user.isAdmin) ...[
+              const Divider(height: 1),
+              _SettingsTile(
+                icon: Icons.folder_open_outlined,
+                label: 'Gestion des ressources',
+                iconColor: AppTheme.primary,
+                onTap: () => context.push('/profile/admin-resources'),
+              ),
               const Divider(height: 1),
               _SettingsTile(
                 icon: Icons.people_outline,
                 label: 'Gestion des utilisateurs',
                 iconColor: AppTheme.tertiary,
-                onTap: () {},
+                onTap: () => context.push('/profile/users'),
               ),
               const Divider(height: 1),
               _SettingsTile(
                 icon: Icons.category_outlined,
                 label: 'Gestion du catalogue',
                 iconColor: AppTheme.success,
-                onTap: () {},
+                onTap: () => context.push('/profile/categories'),
+              ),
+              const Divider(height: 1),
+              _SettingsTile(
+                icon: Icons.people_outline,
+                label: 'Types de relation',
+                iconColor: AppTheme.tertiary,
+                onTap: () => context.push('/profile/type-relations'),
               ),
             ],
           ],

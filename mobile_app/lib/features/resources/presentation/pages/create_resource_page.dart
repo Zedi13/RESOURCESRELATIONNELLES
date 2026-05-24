@@ -7,7 +7,10 @@ import '../../domain/entities/resource.dart';
 import '../providers/resources_provider.dart';
 
 class CreateResourcePage extends StatefulWidget {
-  const CreateResourcePage({super.key});
+  /// Si non null → mode édition. Si null → mode création.
+  final Resource? existingResource;
+
+  const CreateResourcePage({super.key, this.existingResource});
 
   @override
   State<CreateResourcePage> createState() => _CreateResourcePageState();
@@ -15,14 +18,38 @@ class CreateResourcePage extends StatefulWidget {
 
 class _CreateResourcePageState extends State<CreateResourcePage> {
   final _formKey = GlobalKey<FormState>();
-  final _titleCtrl = TextEditingController();
-  final _descCtrl = TextEditingController();
-  final _contentCtrl = TextEditingController();
+  late final TextEditingController _titleCtrl;
+  late final TextEditingController _descCtrl;
+  late final TextEditingController _contentCtrl;
 
-  ResourceType _selectedType = ResourceType.article;
-  String? _selectedCategoryId;
-  final Set<RelationType> _selectedRelationTypes = {};
-  ResourceVisibility _selectedVisibility = ResourceVisibility.public_;
+  late ResourceType _selectedType;
+  late String? _selectedCategoryId;
+  late Set<String> _selectedTypeIds; // IDs des types de relation sélectionnés
+  late ResourceVisibility _selectedVisibility;
+  bool _isSubmitting = false;
+
+  bool get _isEditMode => widget.existingResource != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final r = widget.existingResource;
+    _titleCtrl = TextEditingController(text: r?.title ?? '');
+    _descCtrl = TextEditingController(text: r?.description ?? '');
+    _contentCtrl = TextEditingController(text: r?.content ?? '');
+    _selectedType = r?.type ?? ResourceType.article;
+    _selectedCategoryId = r?.categoryId;
+    // En édition, on pré-sélectionne les ids déjà associés
+    _selectedTypeIds = Set.from(r?.allRelationTypeIds ?? []);
+    _selectedVisibility = r?.visibility ?? ResourceVisibility.public_;
+    // Charger les types de relation depuis l'API si pas encore fait
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<ResourcesProvider>();
+      if (provider.typeRelations.isEmpty) {
+        provider.loadTypeRelationEntities();
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -32,7 +59,7 @@ class _CreateResourcePageState extends State<CreateResourcePage> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCategoryId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -43,7 +70,7 @@ class _CreateResourcePageState extends State<CreateResourcePage> {
       );
       return;
     }
-    if (_selectedRelationTypes.isEmpty) {
+    if (_selectedTypeIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Veuillez sélectionner au moins un type de relation.'),
@@ -53,37 +80,74 @@ class _CreateResourcePageState extends State<CreateResourcePage> {
       return;
     }
 
+    setState(() => _isSubmitting = true);
+
     final auth = context.read<AuthProvider>();
     final user = auth.currentUser!;
     final resourcesProvider = context.read<ResourcesProvider>();
 
-    final newResource = Resource(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: _titleCtrl.text.trim(),
-      description: _descCtrl.text.trim(),
-      content: _contentCtrl.text.trim(),
-      type: _selectedType,
-      categoryId: _selectedCategoryId!,
-      relationTypes: _selectedRelationTypes.toList(),
-      visibility: _selectedVisibility,
-      status: ResourceStatus.enAttente,
-      authorId: user.id,
-      authorName: user.name,
-      createdAt: DateTime.now(),
-      views: 0,
-      shares: 0,
-      estimatedDurationMin: 5,
-    );
-
-    resourcesProvider.addResource(newResource);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ressource soumise pour validation !'),
-        backgroundColor: AppTheme.success,
-      ),
-    );
-    context.pop();
+    try {
+      if (_isEditMode) {
+        final updated = widget.existingResource!.copyWith(
+          title: _titleCtrl.text.trim(),
+          description: _descCtrl.text.trim(),
+          content: _contentCtrl.text.trim(),
+          type: _selectedType,
+          categoryId: _selectedCategoryId,
+          selectedTypeIds: _selectedTypeIds.toList(),
+          visibility: _selectedVisibility,
+        );
+        await resourcesProvider.updateResource(updated);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ressource modifiée avec succès !'),
+              backgroundColor: AppTheme.success,
+            ),
+          );
+          context.pop();
+        }
+      } else {
+        final newResource = Resource(
+          id: '',
+          title: _titleCtrl.text.trim(),
+          description: _descCtrl.text.trim(),
+          content: _contentCtrl.text.trim(),
+          type: _selectedType,
+          categoryId: _selectedCategoryId!,
+          relationTypes: const [],
+          selectedTypeIds: _selectedTypeIds.toList(),
+          visibility: _selectedVisibility,
+          status: ResourceStatus.enAttente,
+          authorId: user.id,
+          authorName: user.name,
+          createdAt: DateTime.now(),
+          views: 0,
+          shares: 0,
+          estimatedDurationMin: 5,
+        );
+        await resourcesProvider.addResource(newResource);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ressource soumise pour validation !'),
+              backgroundColor: AppTheme.success,
+            ),
+          );
+          context.pop();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   @override
@@ -94,19 +158,29 @@ class _CreateResourcePageState extends State<CreateResourcePage> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Nouvelle ressource'),
+        title: Text(_isEditMode ? 'Modifier la ressource' : 'Nouvelle ressource'),
         actions: [
-          TextButton(
-            onPressed: _submit,
-            child: const Text(
-              'Publier',
-              style: TextStyle(
-                color: AppTheme.secondary,
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
+          if (_isSubmitting)
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ),
+            )
+          else
+            TextButton(
+              onPressed: _submit,
+              child: Text(
+                _isEditMode ? 'Enregistrer' : 'Publier',
+                style: const TextStyle(
+                  color: AppTheme.secondary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
               ),
             ),
-          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -272,7 +346,7 @@ class _CreateResourcePageState extends State<CreateResourcePage> {
                 }).toList(),
               ),
               const SizedBox(height: 20),
-              // Relation types
+              // Relation types (dynamiques depuis l'API)
               const Text(
                 'Types de relations concernées *',
                 style: TextStyle(
@@ -282,24 +356,27 @@ class _CreateResourcePageState extends State<CreateResourcePage> {
                 ),
               ),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: RelationType.values.map((rt) {
-                  final selected = _selectedRelationTypes.contains(rt);
-                  return FilterChip(
-                    label: Text(rt.label),
-                    selected: selected,
-                    onSelected: (v) => setState(() {
-                      if (v) {
-                        _selectedRelationTypes.add(rt);
-                      } else {
-                        _selectedRelationTypes.remove(rt);
-                      }
-                    }),
-                  );
-                }).toList(),
-              ),
+              if (resourcesProvider.isLoadingTypeRelations)
+                const Center(child: CircularProgressIndicator())
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: resourcesProvider.typeRelations.map((tr) {
+                    final selected = _selectedTypeIds.contains(tr.id);
+                    return FilterChip(
+                      label: Text(tr.libelle),
+                      selected: selected,
+                      onSelected: (v) => setState(() {
+                        if (v) {
+                          _selectedTypeIds.add(tr.id);
+                        } else {
+                          _selectedTypeIds.remove(tr.id);
+                        }
+                      }),
+                    );
+                  }).toList(),
+                ),
               const SizedBox(height: 20),
               // Visibility
               const Text(
@@ -360,34 +437,40 @@ class _CreateResourcePageState extends State<CreateResourcePage> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton.icon(
-                  onPressed: _submit,
-                  icon: const Icon(Icons.send_outlined),
-                  label: const Text('Soumettre la ressource'),
+                  onPressed: _isSubmitting ? null : _submit,
+                  icon: Icon(_isEditMode
+                      ? Icons.save_outlined
+                      : Icons.send_outlined),
+                  label: Text(_isEditMode
+                      ? 'Enregistrer les modifications'
+                      : 'Soumettre la ressource'),
                 ),
               ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.warning.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: AppTheme.warning.withOpacity(0.2)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info_outline,
-                        color: AppTheme.warning, size: 18),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Les ressources publiques sont soumises à validation par un modérateur avant publication.',
-                        style: TextStyle(fontSize: 12),
+              if (!_isEditMode) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.warning.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: AppTheme.warning.withOpacity(0.2)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline,
+                          color: AppTheme.warning, size: 18),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Les ressources publiques sont soumises à validation par un modérateur avant publication.',
+                          style: TextStyle(fontSize: 12),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(height: 40),
             ],
           ),

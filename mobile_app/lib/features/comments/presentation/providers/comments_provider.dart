@@ -4,40 +4,52 @@ import '../../domain/repositories/comments_repository.dart';
 
 class CommentsProvider extends ChangeNotifier {
   final CommentsRepository _repository;
-
   CommentsProvider(this._repository);
 
-  List<Comment> getCommentsByResource(String resourceId) =>
-      _repository.getCommentsByResource(resourceId);
+  final Map<String, List<Comment>> _cache = {};
+  bool isLoading = false;
 
-  void addComment({
+  Future<void> loadComments(String resourceId) async {
+    isLoading = true;
+    notifyListeners();
+    try {
+      _cache[resourceId] = await _repository.getCommentsByResource(resourceId);
+    } catch (_) {
+      _cache[resourceId] = [];
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  List<Comment> getCommentsByResource(String resourceId) =>
+      _cache[resourceId] ?? const [];
+
+  Future<void> addComment({
     required String resourceId,
     required String authorId,
     required String authorName,
     required String content,
     String? parentId,
-  }) {
-    final comment = Comment(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+  }) async {
+    await _repository.addComment(
       resourceId: resourceId,
       authorId: authorId,
       authorName: authorName,
       content: content,
-      createdAt: DateTime.now(),
-      status: CommentStatus.approuve,
       parentId: parentId,
     );
-    _repository.addComment(comment);
-    notifyListeners();
+    await loadComments(resourceId);
   }
 
-  void moderateComment(String commentId, CommentStatus status) {
-    _repository.moderateComment(commentId, status);
-    notifyListeners();
+  Future<void> moderateComment(
+      String commentId, CommentStatus status, String resourceId) async {
+    await _repository.moderateComment(commentId, status);
+    await loadComments(resourceId);
   }
 
-  void deleteComment(String commentId) {
-    _repository.deleteComment(commentId);
-    notifyListeners();
+  Future<void> deleteComment(String commentId, String resourceId) async {
+    await _repository.deleteComment(commentId);
+    await loadComments(resourceId);
   }
 }
