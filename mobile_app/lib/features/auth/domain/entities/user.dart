@@ -7,7 +7,9 @@ class User {
   final String password;
   final UserRole role;
   final bool isVerified;
+  final bool isActive;
   final DateTime createdAt;
+  final DateTime? lastLogin;
 
   const User({
     required this.id,
@@ -16,7 +18,9 @@ class User {
     required this.password,
     required this.role,
     required this.isVerified,
+    this.isActive = true,
     required this.createdAt,
+    this.lastLogin,
   });
 
   String get roleLabel {
@@ -40,6 +44,8 @@ class User {
     String? email,
     UserRole? role,
     bool? isVerified,
+    bool? isActive,
+    DateTime? lastLogin,
   }) {
     return User(
       id: id,
@@ -48,7 +54,9 @@ class User {
       password: password,
       role: role ?? this.role,
       isVerified: isVerified ?? this.isVerified,
+      isActive: isActive ?? this.isActive,
       createdAt: createdAt,
+      lastLogin: lastLogin ?? this.lastLogin,
     );
   }
 }

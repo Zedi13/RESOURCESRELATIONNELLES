@@ -89,6 +89,10 @@ class Resource {
   final ResourceType type;
   final String categoryId;
   final List<RelationType> relationTypes;
+  /// IDs bruts renvoyés par l'API (inclut les types hors-enum)
+  final List<String> allRelationTypeIds;
+  /// IDs sélectionnés lors de la création/édition (utilisés pour l'envoi API)
+  final List<String> selectedTypeIds;
   final ResourceVisibility visibility;
   final ResourceStatus status;
   final String authorId;
@@ -107,6 +111,8 @@ class Resource {
     required this.type,
     required this.categoryId,
     required this.relationTypes,
+    this.allRelationTypeIds = const [],
+    this.selectedTypeIds = const [],
     required this.visibility,
     required this.status,
     required this.authorId,
@@ -128,6 +134,8 @@ class Resource {
     ResourceType? type,
     String? categoryId,
     List<RelationType>? relationTypes,
+    List<String>? allRelationTypeIds,
+    List<String>? selectedTypeIds,
     ResourceVisibility? visibility,
     ResourceStatus? status,
     int? views,
@@ -141,6 +149,8 @@ class Resource {
       type: type ?? this.type,
       categoryId: categoryId ?? this.categoryId,
       relationTypes: relationTypes ?? this.relationTypes,
+      allRelationTypeIds: allRelationTypeIds ?? this.allRelationTypeIds,
+      selectedTypeIds: selectedTypeIds ?? this.selectedTypeIds,
       visibility: visibility ?? this.visibility,
       status: status ?? this.status,
       authorId: authorId,

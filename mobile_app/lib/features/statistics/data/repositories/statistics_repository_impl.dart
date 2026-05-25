@@ -1,12 +1,14 @@
 import '../../domain/entities/statistics.dart';
 import '../../domain/repositories/statistics_repository.dart';
-import '../datasources/statistics_local_datasource.dart';
+import '../datasources/statistics_remote_datasource.dart';
 
 class StatisticsRepositoryImpl implements StatisticsRepository {
-  final StatisticsLocalDatasource _datasource;
-
+  final StatisticsRemoteDatasource _datasource;
   StatisticsRepositoryImpl(this._datasource);
 
   @override
-  AppStatistics getStatistics() => _datasource.getStatistics();
+  Future<AppStatistics> getStatistics() => _datasource.getStatistics();
+
+  @override
+  Future<String> exportCsv() => _datasource.exportCsv();
 }

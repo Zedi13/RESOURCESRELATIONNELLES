@@ -1,8 +1,14 @@
 import '../entities/comment.dart';
 
 abstract class CommentsRepository {
-  List<Comment> getCommentsByResource(String resourceId);
-  void addComment(Comment comment);
-  void moderateComment(String commentId, CommentStatus status);
-  void deleteComment(String commentId);
+  Future<List<Comment>> getCommentsByResource(String resourceId);
+  Future<void> addComment({
+    required String resourceId,
+    required String authorId,
+    required String authorName,
+    required String content,
+    String? parentId,
+  });
+  Future<void> moderateComment(String commentId, CommentStatus status);
+  Future<void> deleteComment(String commentId);
 }

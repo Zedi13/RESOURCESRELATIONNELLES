@@ -10,6 +10,9 @@ class ResourceCard extends StatelessWidget {
   final bool isFavorite;
   final bool isExploited;
   final VoidCallback? onFavoriteToggle;
+  /// Labels des types de relation résolus dynamiquement depuis l'API.
+  /// Si fourni, remplace resource.relationTypes (enum hardcodé).
+  final List<String>? relationTypeLabels;
 
   const ResourceCard({
     super.key,
@@ -19,6 +22,7 @@ class ResourceCard extends StatelessWidget {
     this.isFavorite = false,
     this.isExploited = false,
     this.onFavoriteToggle,
+    this.relationTypeLabels,
   });
 
   @override
@@ -123,31 +127,36 @@ class ResourceCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 10),
-                  // Relation types chips
-                  Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
-                    children: resource.relationTypes.map((rt) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: catColor.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          rt.label,
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: catColor,
-                            fontWeight: FontWeight.w500,
+                  // Relation types chips (labels dynamiques ou fallback enum)
+                  Builder(builder: (_) {
+                    final labels = relationTypeLabels ??
+                        resource.relationTypes.map((rt) => rt.label).toList();
+                    if (labels.isEmpty) return const SizedBox.shrink();
+                    return Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: labels.map((label) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
                           ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                          decoration: BoxDecoration(
+                            color: catColor.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: catColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  }),
                   const SizedBox(height: 10),
                   // Footer: stats
                   Row(

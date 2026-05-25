@@ -16,56 +16,121 @@ class CommentsSection extends StatefulWidget {
 
 class _CommentsSectionState extends State<CommentsSection> {
   final _controller = TextEditingController();
+  final _focusNode = FocusNode();
+
   String? _replyingToId;
   String? _replyingToName;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CommentsProvider>().loadComments(widget.resourceId);
+    });
+  }
 
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
-  void _submitComment(BuildContext context) {
-    final text = _controller.text.trim();
-    if (text.isEmpty) return;
+  void _startReply(String id, String name) {
+    setState(() {
+      _replyingToId = id;
+      _replyingToName = name;
+    });
+    _focusNode.requestFocus();
+  }
 
-    final auth = context.read<AuthProvider>();
-    if (auth.currentUser == null) return;
-
-    context.read<CommentsProvider>().addComment(
-          resourceId: widget.resourceId,
-          authorId: auth.currentUser!.id,
-          authorName: auth.currentUser!.name,
-          content: text,
-          parentId: _replyingToId,
-        );
-
-    _controller.clear();
+  void _cancelReply() {
     setState(() {
       _replyingToId = null;
       _replyingToName = null;
     });
   }
 
+  Future<void> _submitComment(BuildContext context) async {
+    final text = _controller.text.trim();
+    if (text.isEmpty || _isSubmitting) return;
+
+    final auth = context.read<AuthProvider>();
+    if (auth.currentUser == null) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      await context.read<CommentsProvider>().addComment(
+            resourceId: widget.resourceId,
+            authorId: auth.currentUser!.id,
+            authorName: auth.currentUser!.name,
+            content: text,
+            parentId: _replyingToId,
+          );
+
+      _controller.clear();
+      _cancelReply();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _replyingToId != null
+                  ? 'Réponse envoyée — visible après modération'
+                  : 'Commentaire envoyé — visible après modération',
+            ),
+            backgroundColor: AppTheme.success,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur lors de l\'envoi, réessayez.'),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final commentsProvider = context.watch<CommentsProvider>();
     final auth = context.watch<AuthProvider>();
+    final isLoggedIn = auth.isLoggedIn;
     final comments = commentsProvider.getCommentsByResource(widget.resourceId);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Commentaires',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.textPrimary,
-          ),
+        Row(
+          children: [
+            const Text(
+              'Commentaires',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (commentsProvider.isLoading)
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+          ],
         ),
         const SizedBox(height: 16),
-        if (comments.isEmpty)
+        if (comments.isEmpty && !commentsProvider.isLoading)
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -82,13 +147,11 @@ class _CommentsSectionState extends State<CommentsSection> {
         else
           ...comments.map((c) => _CommentTile(
                 comment: c,
-                onReply: (id, name) => setState(() {
-                  _replyingToId = id;
-                  _replyingToName = name;
-                }),
+                isLoggedIn: isLoggedIn,
+                onReply: (id, name) => _startReply(id, name),
               )),
         const SizedBox(height: 16),
-        if (auth.isLoggedIn) ...[
+        if (isLoggedIn) ...[
           if (_replyingToName != null)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -104,7 +167,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                   Expanded(
                     child: Text(
                       'Répondre à $_replyingToName',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 13,
                         color: AppTheme.tertiary,
                         fontWeight: FontWeight.w500,
@@ -112,10 +175,7 @@ class _CommentsSectionState extends State<CommentsSection> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => setState(() {
-                      _replyingToId = null;
-                      _replyingToName = null;
-                    }),
+                    onTap: _cancelReply,
                     child: const Icon(Icons.close, size: 16),
                   ),
                 ],
@@ -127,8 +187,10 @@ class _CommentsSectionState extends State<CommentsSection> {
               Expanded(
                 child: TextField(
                   controller: _controller,
+                  focusNode: _focusNode,
                   maxLines: 3,
                   minLines: 1,
+                  enabled: !_isSubmitting,
                   decoration: InputDecoration(
                     hintText: _replyingToName != null
                         ? 'Votre réponse...'
@@ -142,14 +204,23 @@ class _CommentsSectionState extends State<CommentsSection> {
               SizedBox(
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () => _submitComment(context),
+                  onPressed: _isSubmitting ? null : () => _submitComment(context),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Icon(Icons.send),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.send),
                 ),
               ),
             ],
@@ -175,9 +246,14 @@ class _CommentsSectionState extends State<CommentsSection> {
 
 class _CommentTile extends StatelessWidget {
   final Comment comment;
+  final bool isLoggedIn;
   final void Function(String id, String name) onReply;
 
-  const _CommentTile({required this.comment, required this.onReply});
+  const _CommentTile({
+    required this.comment,
+    required this.isLoggedIn,
+    required this.onReply,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -201,7 +277,9 @@ class _CommentTile extends StatelessWidget {
                       radius: 14,
                       backgroundColor: AppTheme.primary.withOpacity(0.15),
                       child: Text(
-                        comment.authorName[0].toUpperCase(),
+                        comment.authorName.isNotEmpty
+                            ? comment.authorName[0].toUpperCase()
+                            : '?',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -231,25 +309,25 @@ class _CommentTile extends StatelessWidget {
                         ],
                       ),
                     ),
-                    TextButton(
-                      onPressed: () => onReply(comment.id, comment.authorName),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                    if (isLoggedIn)
+                      TextButton(
+                        onPressed: () =>
+                            onReply(comment.id, comment.authorName),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.reply, size: 14),
+                            SizedBox(width: 4),
+                            Text('Répondre', style: TextStyle(fontSize: 12)),
+                          ],
+                        ),
                       ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.reply, size: 14),
-                          SizedBox(width: 4),
-                          Text('Répondre', style: TextStyle(fontSize: 12)),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -260,14 +338,12 @@ class _CommentTile extends StatelessWidget {
               ],
             ),
           ),
-          // Replies
           if (comment.replies.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(left: 24, top: 6),
               child: Column(
-                children: comment.replies
-                    .map((r) => _ReplyTile(reply: r))
-                    .toList(),
+                children:
+                    comment.replies.map((r) => _ReplyTile(reply: r)).toList(),
               ),
             ),
         ],
@@ -278,6 +354,8 @@ class _CommentTile extends StatelessWidget {
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final diff = now.difference(date);
+    if (diff.inMinutes < 1) return 'À l\'instant';
+    if (diff.inHours < 1) return 'Il y a ${diff.inMinutes} min';
     if (diff.inDays == 0) return 'Aujourd\'hui';
     if (diff.inDays == 1) return 'Hier';
     if (diff.inDays < 7) return 'Il y a ${diff.inDays} jours';
@@ -303,11 +381,22 @@ class _ReplyTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Container(
+            width: 2,
+            height: 36,
+            margin: const EdgeInsets.only(right: 10),
+            decoration: BoxDecoration(
+              color: AppTheme.tertiary.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
           CircleAvatar(
             radius: 12,
             backgroundColor: AppTheme.tertiary.withOpacity(0.2),
             child: Text(
-              reply.authorName[0].toUpperCase(),
+              reply.authorName.isNotEmpty
+                  ? reply.authorName[0].toUpperCase()
+                  : '?',
               style: const TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
@@ -320,12 +409,24 @@ class _ReplyTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  reply.authorName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      reply.authorName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _formatDate(reply.createdAt),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -338,5 +439,16 @@ class _ReplyTile extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inMinutes < 1) return 'À l\'instant';
+    if (diff.inHours < 1) return 'Il y a ${diff.inMinutes} min';
+    if (diff.inDays == 0) return 'Aujourd\'hui';
+    if (diff.inDays == 1) return 'Hier';
+    if (diff.inDays < 7) return 'Il y a ${diff.inDays} jours';
+    return '${date.day}/${date.month}/${date.year}';
   }
 }
