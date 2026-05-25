@@ -9,8 +9,8 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-05-23T16:29:59+0200",
-    comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.46.0.v20260407-0427, environment: Java 21.0.10 (Eclipse Adoptium)"
+    date = "2026-05-25T21:24:28+0200",
+    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.2 (Oracle Corporation)"
 )
 @Component
 public class CommentaireMapperImpl implements CommentaireMapper {
@@ -27,10 +27,10 @@ public class CommentaireMapperImpl implements CommentaireMapper {
         commentaireResponse.auteurId( commentaireAuteurId( commentaire ) );
         commentaireResponse.auteurNom( commentaireAuteurNomComplet( commentaire ) );
         commentaireResponse.parentId( commentaireParentId( commentaire ) );
-        commentaireResponse.contenu( commentaire.getContenu() );
-        commentaireResponse.dateCreation( commentaire.getDateCreation() );
         commentaireResponse.id( commentaire.getId() );
+        commentaireResponse.contenu( commentaire.getContenu() );
         commentaireResponse.statut( commentaire.getStatut() );
+        commentaireResponse.dateCreation( commentaire.getDateCreation() );
 
         commentaireResponse.reponses( mapReponses(commentaire) );
 

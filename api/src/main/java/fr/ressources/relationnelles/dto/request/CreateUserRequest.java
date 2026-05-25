@@ -17,7 +17,7 @@ public record CreateUserRequest(
     String email,
 
     @NotBlank
-    @Size(min = 8)
+    @Size(min = 8, message = "Le mot de passe doit contenir au moins 8 caractères")
     String motDePasse,
 
     @NotNull(message = "Le rôle est obligatoire")

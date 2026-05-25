@@ -18,6 +18,7 @@ export default function AdminUsersPage() {
   const [form, setForm] = useState({ nomComplet: '', email: '', motDePasse: '', role: 'MODERATEUR' as Role });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const fetch = useCallback(() => {
     setLoading(true);
@@ -36,13 +37,16 @@ export default function AdminUsersPage() {
 
   const handleCreate = async () => {
     setError('');
+    setFieldErrors({});
     setSaving(true);
     try {
       await utilisateursApi.creerComptePrivilegie(form);
       setCreateModal(false);
       fetch();
     } catch (e: any) {
-      setError(e.response?.data?.message ?? 'Erreur lors de la création');
+      const data = e.response?.data;
+      if (data?.erreurs) setFieldErrors(data.erreurs);
+      else setError(data?.message ?? 'Erreur lors de la création');
     } finally {
       setSaving(false);
     }
@@ -106,7 +110,7 @@ export default function AdminUsersPage() {
       <Modal
         open={createModal}
         title="Créer un compte privilégié"
-        onClose={() => setCreateModal(false)}
+        onClose={() => { setCreateModal(false); setError(''); setFieldErrors({}); }}
         actions={
           <>
             <button className="btn btn-primary" onClick={handleCreate} disabled={saving} type="button">
@@ -119,14 +123,17 @@ export default function AdminUsersPage() {
         <div className="form-group">
           <label>Nom complet</label>
           <input type="text" className="form-input" value={form.nomComplet} onChange={(e) => setForm(p => ({ ...p, nomComplet: e.target.value }))} />
+          {fieldErrors.nomComplet && <p className="form-error">{fieldErrors.nomComplet}</p>}
         </div>
         <div className="form-group">
           <label>Email</label>
           <input type="email" className="form-input" value={form.email} onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))} />
+          {fieldErrors.email && <p className="form-error">{fieldErrors.email}</p>}
         </div>
         <div className="form-group">
-          <label>Mot de passe</label>
+          <label>Mot de passe <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8em' }}>(8 caractères min.)</span></label>
           <input type="password" className="form-input" value={form.motDePasse} onChange={(e) => setForm(p => ({ ...p, motDePasse: e.target.value }))} />
+          {fieldErrors.motDePasse && <p className="form-error">{fieldErrors.motDePasse}</p>}
         </div>
         <div className="form-group">
           <label>Rôle</label>

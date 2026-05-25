@@ -4,6 +4,9 @@ import type { Categorie } from '../types';
 export const lister = () =>
   client.get<Categorie[]>('/api/categories').then((r) => r.data);
 
+export const listerToutes = () =>
+  client.get<Categorie[]>('/api/categories/toutes').then((r) => r.data);
+
 export const creer = (data: { nom: string; description?: string; couleur?: string }) =>
   client.post<Categorie>('/api/categories', data).then((r) => r.data);
 

@@ -97,6 +97,20 @@ export default function RessourceDetailPage() {
     finally { setSubmitting(false); }
   };
 
+  const deleteComment = async (commentId: number, parentId?: number) => {
+    await commentairesApi.supprimer(commentId);
+    setCommentaires((prev) => {
+      if (parentId) {
+        return prev.map((c) =>
+          c.id === parentId
+            ? { ...c, reponses: (c.reponses ?? []).filter((r) => r.id !== commentId) }
+            : c
+        );
+      }
+      return prev.filter((c) => c.id !== commentId);
+    });
+  };
+
   const toggleReplies = (id: number) => {
     setExpandedReplies((prev) => {
       const next = new Set(prev);
@@ -324,6 +338,15 @@ export default function RessourceDetailPage() {
                       {isReplying ? 'Annuler' : 'Répondre'}
                     </button>
                   )}
+                  {isModerator && (
+                    <button
+                      type="button"
+                      className="delete-btn"
+                      onClick={() => deleteComment(c.id)}
+                    >
+                      Supprimer
+                    </button>
+                  )}
                 </div>
 
                 {isReplying && (
@@ -357,6 +380,17 @@ export default function RessourceDetailPage() {
                           <time>{new Date(r.dateCreation).toLocaleDateString('fr-FR')}</time>
                         </div>
                         <p className="comment-text">{r.contenu}</p>
+                        {isModerator && (
+                          <div className="comment-footer">
+                            <button
+                              type="button"
+                              className="delete-btn"
+                              onClick={() => deleteComment(r.id, c.id)}
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -13,4 +13,5 @@ public class CategorieResponse {
     private String icone;
     private short ordre;
     private boolean estActive;
+    private int nombreRessources;
 }

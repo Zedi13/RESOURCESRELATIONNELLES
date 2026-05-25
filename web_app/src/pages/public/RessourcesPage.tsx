@@ -5,16 +5,15 @@ import * as categoriesApi from '../../api/categories';
 import * as typeRelationsApi from '../../api/typeRelations';
 import type { Categorie, RessourceSummary, TypeRelation, TypeRessource } from '../../types';
 import RessourceCard from '../../components/common/RessourceCard';
-import Pagination from '../../components/common/Pagination';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
 import './RessourcesPage.css';
 
-const TYPES: TypeRessource[] = ['ARTICLE', 'GUIDE', 'VIDEO', 'PODCAST', 'ACTIVITE', 'JEU', 'ATELIER', 'AUTRE'];
+const TYPES: TypeRessource[] = ['ARTICLE', 'VIDEO', 'AUDIO', 'ACTIVITE', 'JEU', 'PODCAST', 'DOCUMENT', 'LIEN'];
 const TYPE_LABELS: Record<TypeRessource, string> = {
-  ARTICLE: 'Article', GUIDE: 'Guide', VIDEO: 'Vidéo',
-  PODCAST: 'Podcast', ACTIVITE: 'Activité', JEU: 'Jeu',
-  ATELIER: 'Atelier', AUTRE: 'Autre',
+  ARTICLE: 'Article', VIDEO: 'Vidéo', AUDIO: 'Audio',
+  ACTIVITE: 'Activité', JEU: 'Jeu', PODCAST: 'Podcast',
+  DOCUMENT: 'Document', LIEN: 'Lien',
 };
 
 export default function RessourcesPage() {
@@ -22,25 +21,24 @@ export default function RessourcesPage() {
   const { user } = useAuth();
 
   const [ressources, setRessources] = useState<RessourceSummary[]>([]);
-  const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Categorie[]>([]);
   const [typeRelations, setTypeRelations] = useState<TypeRelation[]>([]);
+  const [selectedRelations, setSelectedRelations] = useState<number[]>([]);
 
-  const page = parseInt(params.get('page') ?? '0');
   const search = params.get('search') ?? '';
   const categorieId = params.get('categorieId') ? parseInt(params.get('categorieId')!) : undefined;
   const type = (params.get('type') ?? '') as TypeRessource | '';
 
   const fetch = useCallback(() => {
     setLoading(true);
-    const filters = { page, search: search || undefined, categorieId, type: type || undefined, size: 12 };
+    const filters = { page: 0, search: search || undefined, categorieId, type: type || undefined, size: 1000 };
     const fn = user ? ressourcesApi.listerAccessibles : ressourcesApi.listerPubliques;
     fn(filters)
-      .then((r) => { setRessources(r.content); setTotalPages(r.totalPages); setTotal(r.totalElements); })
+      .then((r) => { setRessources(r.content); setTotal(r.totalElements); })
       .finally(() => setLoading(false));
-  }, [page, search, categorieId, type, user]);
+  }, [search, categorieId, type, user]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
@@ -52,9 +50,20 @@ export default function RessourcesPage() {
   const set = (key: string, value: string) => {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value); else next.delete(key);
-    next.delete('page');
     setParams(next);
   };
+
+  const toggleRelation = (id: number) => {
+    setSelectedRelations(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const filteredRessources = selectedRelations.length === 0
+    ? ressources
+    : ressources.filter(r =>
+        selectedRelations.every(id => (r.typesRelation ?? []).some(t => t.id === id))
+      );
 
   return (
     <div className="ressources-page container">
@@ -110,15 +119,19 @@ export default function RessourcesPage() {
           <div className="filter-options">
             {typeRelations.map((t) => (
               <label key={t.id} className="filter-option">
-                <input type="checkbox" disabled />
+                <input
+                  type="checkbox"
+                  checked={selectedRelations.includes(t.id)}
+                  onChange={() => toggleRelation(t.id)}
+                />
                 {t.libelle}
               </label>
             ))}
           </div>
         </div>
 
-        {(search || categorieId || type) && (
-          <button className="btn btn-outline btn-sm" onClick={() => setParams(new URLSearchParams())}>
+        {(search || categorieId || type || selectedRelations.length > 0) && (
+          <button className="btn btn-outline btn-sm" onClick={() => { setParams(new URLSearchParams()); setSelectedRelations([]); }}>
             Réinitialiser les filtres
           </button>
         )}
@@ -132,22 +145,21 @@ export default function RessourcesPage() {
           )}
         </div>
 
-        {loading ? <LoadingSpinner /> : ressources.length === 0 ? (
+        {loading ? <LoadingSpinner /> : filteredRessources.length === 0 ? (
           <div className="empty-state">
             <p>Aucune ressource ne correspond à votre recherche.</p>
-            <button className="btn btn-outline" onClick={() => setParams(new URLSearchParams())}>
+            <button className="btn btn-outline" onClick={() => { setParams(new URLSearchParams()); setSelectedRelations([]); }}>
               Effacer les filtres
             </button>
           </div>
         ) : (
           <>
             <div className="ressources-grid">
-              {ressources.map((r) => (
+              {filteredRessources.map((r) => (
                 <RessourceCard key={r.id} ressource={r} onUpdate={(updated) => setRessources(prev => prev.map(x => x.id === updated.id ? updated : x))} />
               ))}
             </div>
-            <Pagination page={page} totalPages={totalPages} onChange={(p) => set('page', p.toString())} />
-          </>
+</>
         )}
       </div>
     </div>

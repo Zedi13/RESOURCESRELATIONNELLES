@@ -21,16 +21,19 @@ public class CategorieService {
     private final CategorieRepository categorieRepository;
     private final CategorieMapper categorieMapper;
 
+    @Transactional(readOnly = true)
     public List<CategorieResponse> listerActives() {
         return categorieRepository.findByEstActiveTrueOrderByOrdreAsc()
             .stream().map(categorieMapper::toResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<CategorieResponse> listerToutes() {
         return categorieRepository.findAll()
             .stream().map(categorieMapper::toResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public CategorieResponse getById(Integer id) {
         return categorieMapper.toResponse(trouverOuEchouer(id));
     }
@@ -43,8 +46,8 @@ public class CategorieService {
         Categorie categorie = Categorie.builder()
             .nom(request.nom())
             .description(request.description())
-            .couleur(request.couleur())
-            .icone(request.icone())
+            .couleur(request.couleur() != null && !request.couleur().isBlank() ? request.couleur() : "#2E86AB")
+            .icone(request.icone() != null && !request.icone().isBlank() ? request.icone() : "category")
             .ordre(request.ordre())
             .build();
         return categorieMapper.toResponse(categorieRepository.save(categorie));
@@ -58,8 +61,8 @@ public class CategorieService {
         }
         categorie.setNom(request.nom());
         categorie.setDescription(request.description());
-        categorie.setCouleur(request.couleur());
-        categorie.setIcone(request.icone());
+        categorie.setCouleur(request.couleur() != null && !request.couleur().isBlank() ? request.couleur() : "#2E86AB");
+        categorie.setIcone(request.icone() != null && !request.icone().isBlank() ? request.icone() : "category");
         categorie.setOrdre(request.ordre());
         return categorieMapper.toResponse(categorieRepository.save(categorie));
     }

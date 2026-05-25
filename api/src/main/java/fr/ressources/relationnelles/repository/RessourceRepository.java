@@ -17,7 +17,12 @@ import java.util.Map;
 public interface RessourceRepository extends JpaRepository<Ressource, Integer> {
 
     // Endpoint public : ressources publiées et publiques avec filtres optionnels
-    @Query("SELECT r FROM Ressource r WHERE r.statut = 'publie' AND r.visibilite = 'publique' AND " +
+    @Query(value = "SELECT DISTINCT r FROM Ressource r LEFT JOIN FETCH r.typesRelation WHERE r.statut = 'publie' AND r.visibilite = 'publique' AND " +
+           "(:categorieId IS NULL OR r.categorie.id = :categorieId) AND " +
+           "(:type IS NULL OR r.type = :type) AND " +
+           "(:search IS NULL OR LOWER(r.titre) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "   OR LOWER(r.description) LIKE LOWER(CONCAT('%', :search, '%')))",
+           countQuery = "SELECT COUNT(DISTINCT r) FROM Ressource r WHERE r.statut = 'publie' AND r.visibilite = 'publique' AND " +
            "(:categorieId IS NULL OR r.categorie.id = :categorieId) AND " +
            "(:type IS NULL OR r.type = :type) AND " +
            "(:search IS NULL OR LOWER(r.titre) LIKE LOWER(CONCAT('%', :search, '%')) " +
@@ -28,9 +33,13 @@ public interface RessourceRepository extends JpaRepository<Ressource, Integer> {
                                   Pageable pageable);
 
     // Endpoint citoyen connecté : ses propres ressources + ressources publiques/partagées
-    @Query("SELECT r FROM Ressource r WHERE " +
-           "(r.statut = 'publie' AND r.visibilite IN ('publique', 'partagee')) OR " +
-           "(r.auteur.id = :auteurId) AND " +
+    @Query(value = "SELECT DISTINCT r FROM Ressource r LEFT JOIN FETCH r.typesRelation WHERE " +
+           "((r.statut = 'publie' AND r.visibilite IN ('publique', 'partagee')) OR r.auteur.id = :auteurId) AND " +
+           "(:categorieId IS NULL OR r.categorie.id = :categorieId) AND " +
+           "(:type IS NULL OR r.type = :type) AND " +
+           "(:search IS NULL OR LOWER(r.titre) LIKE LOWER(CONCAT('%', :search, '%')))",
+           countQuery = "SELECT COUNT(DISTINCT r) FROM Ressource r WHERE " +
+           "((r.statut = 'publie' AND r.visibilite IN ('publique', 'partagee')) OR r.auteur.id = :auteurId) AND " +
            "(:categorieId IS NULL OR r.categorie.id = :categorieId) AND " +
            "(:type IS NULL OR r.type = :type) AND " +
            "(:search IS NULL OR LOWER(r.titre) LIKE LOWER(CONCAT('%', :search, '%')))")

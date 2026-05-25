@@ -48,7 +48,7 @@ public class CommentaireService {
             .ressource(ressourceService.trouverOuEchouer(ressourceId))
             .auteur(auteur)
             .contenu(request.contenu())
-            .statut(StatutCommentaire.en_attente)
+            .statut(StatutCommentaire.approuve)
             .build();
 
         if (request.parentId() != null) {

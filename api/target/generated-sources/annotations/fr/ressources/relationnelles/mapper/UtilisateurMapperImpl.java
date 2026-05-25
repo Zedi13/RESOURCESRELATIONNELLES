@@ -7,8 +7,8 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-05-23T16:29:59+0200",
-    comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.46.0.v20260407-0427, environment: Java 21.0.10 (Eclipse Adoptium)"
+    date = "2026-05-25T21:24:28+0200",
+    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.2 (Oracle Corporation)"
 )
 @Component
 public class UtilisateurMapperImpl implements UtilisateurMapper {
@@ -21,14 +21,14 @@ public class UtilisateurMapperImpl implements UtilisateurMapper {
 
         UtilisateurResponse.UtilisateurResponseBuilder utilisateurResponse = UtilisateurResponse.builder();
 
-        utilisateurResponse.dateInscription( utilisateur.getDateInscription() );
-        utilisateurResponse.derniereConnexion( utilisateur.getDerniereConnexion() );
-        utilisateurResponse.email( utilisateur.getEmail() );
-        utilisateurResponse.estActif( utilisateur.isEstActif() );
-        utilisateurResponse.estVerifie( utilisateur.isEstVerifie() );
         utilisateurResponse.id( utilisateur.getId() );
         utilisateurResponse.nomComplet( utilisateur.getNomComplet() );
+        utilisateurResponse.email( utilisateur.getEmail() );
         utilisateurResponse.role( utilisateur.getRole() );
+        utilisateurResponse.estVerifie( utilisateur.isEstVerifie() );
+        utilisateurResponse.estActif( utilisateur.isEstActif() );
+        utilisateurResponse.dateInscription( utilisateur.getDateInscription() );
+        utilisateurResponse.derniereConnexion( utilisateur.getDerniereConnexion() );
 
         return utilisateurResponse.build();
     }

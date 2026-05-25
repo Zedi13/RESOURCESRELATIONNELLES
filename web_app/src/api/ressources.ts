@@ -20,7 +20,11 @@ export interface AdminRessourceFilters extends RessourceFilters {
 }
 
 const toParams = (f: Record<string, unknown>) =>
-  Object.fromEntries(Object.entries(f).filter(([, v]) => v !== undefined && v !== ''));
+  Object.fromEntries(
+    Object.entries(f)
+      .filter(([, v]) => v !== undefined && v !== '')
+      .map(([k, v]) => [k, typeof v === 'string' ? v.toLowerCase() : v])
+  );
 
 export const listerPubliques = (filters: RessourceFilters = {}) =>
   client.get<PageResponse<RessourceSummary>>('/api/ressources', {

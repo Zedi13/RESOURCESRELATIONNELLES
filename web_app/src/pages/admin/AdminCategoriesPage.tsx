@@ -9,20 +9,20 @@ export default function AdminCategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [selected, setSelected] = useState<Categorie | null>(null);
-  const [form, setForm] = useState({ nom: '', description: '', couleur: '' });
+  const [form, setForm] = useState({ nom: '', description: '', couleur: '#3b82f6' });
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const fetch = () => {
     setLoading(true);
-    categoriesApi.lister().then(setCategories).finally(() => setLoading(false));
+    categoriesApi.listerToutes().then(setCategories).finally(() => setLoading(false));
   };
 
   useEffect(() => { fetch(); }, []);
 
-  const openCreate = () => { setForm({ nom: '', description: '', couleur: '' }); setSelected(null); setModal('create'); };
-  const openEdit = (c: Categorie) => { setForm({ nom: c.nom, description: c.description ?? '', couleur: c.couleur ?? '' }); setSelected(c); setModal('edit'); };
+  const openCreate = () => { setForm({ nom: '', description: '', couleur: '#3b82f6' }); setSelected(null); setModal('create'); };
+  const openEdit = (c: Categorie) => { setForm({ nom: c.nom, description: c.description ?? '', couleur: c.couleur ?? '#3b82f6' }); setSelected(c); setModal('edit'); };
 
   const handleSave = async () => {
     setError('');
